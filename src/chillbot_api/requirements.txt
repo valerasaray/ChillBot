@@ -1,0 +1,6 @@
+kafka-python==2.1.2
+pydantic~=2.10.2
+psycopg2-binary>=2.9.0
+sqlalchemy==2.0.30
+asyncpg==0.31.0
+requests==2.32.5

@@ -1,0 +1,86 @@
+services:
+  chillbot-api:
+    build:
+      context: .
+      dockerfile: ./src/chillbot_api/Dockerfile
+    depends_on:
+      - chillbot-kafka
+      - chillbot-database
+    environment:
+      KAFKA_HOST: chillbot-kafka
+      KAFKA_PORT: 9092
+      KAFKA_LLM_TOPIC: chillbot_llm_topic
+      KAFKA_LLM_GROUP_ID: chillbot-llm-group
+      KAFKA_OUT_TOPIC: chillbot_out_topic
+      KAFKA_OUT_GROUP_ID: chillbot-out-group
+      KAFKA_AUTO_OFFSET_RESET: earliest
+      KAFKA_ENABLE_AUTO_COMMIT: 1
+      KAFKA_INITIAL_TIMEOUT: 20
+      KAFKA_RETRY_TIMEOUT: 10
+      POSTGRES_HOST: chillbot-database
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_URL: ${LLM_URL}
+      LLM_MODEL: ${LLM_MODEL}
+    ports:
+      - '8002:8002'
+    networks:
+      - chillbot-network
+    restart: on-failure
+
+  chillbot-kafka:
+    image: confluentinc/cp-kafka:7.9.4
+    depends_on:
+      - chillbot-zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: chillbot-zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://chillbot-kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG4J_LOGGERS: 'kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO'
+      KAFKA_LOG4J_ROOT_LOGLEVEL: 'ERROR'
+    networks:
+      - chillbot-network
+    restart: on-failure
+    logging:
+      driver: 'none'
+
+  chillbot-zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.4
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - '2181:2181' # удалить
+    networks:
+      - chillbot-network
+    restart: on-failure
+
+    logging:
+      driver: 'none'
+
+  chillbot-database:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./src/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - chillbot-network
+    restart: always
+
+volumes:
+  postgres_data:
+
+networks:
+  chillbot-network:
+    driver: bridge
