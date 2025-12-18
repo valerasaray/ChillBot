@@ -1,2 +1,4 @@
 aiogram==3.23.0
+kafka-python==2.1.2
 python-dotenv==1.2.1
+aiokafka==0.12.0

@@ -18,6 +18,7 @@ class AbstractCommentRepository(ABC):
     async def list(
         self,
         comment_id: str | None = None,
+        is_moderated: bool | None = None,
         user_id: int | None = None,
         place_id: int | None = None,
     ) -> Iterable[Comment]:
@@ -28,6 +29,7 @@ class AbstractCommentRepository(ABC):
         self,
         *,
         comment_id: str | None = None,
+        is_moderated: bool | None = None,
         user_id: int | None = None,
         place_id: int | None = None,
         new_text: str | None = None,

@@ -39,3 +39,4 @@ class Producer:
             except NoBrokersAvailable:
                 logger.warning(f"Kafka is not available. Retry at {self._config.initial_timeout} seconds")
                 time.sleep(self._config.initial_timeout)
+    

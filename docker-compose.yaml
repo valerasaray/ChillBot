@@ -1,4 +1,28 @@
 services:
+  chillbot:
+    build:
+      context: .
+      dockerfile: ./src/chillbot/Dockerfile
+    depends_on:
+      - chillbot-kafka
+      - chillbot-database
+    environment:
+      KAFKA_HOST: chillbot-kafka
+      KAFKA_PORT: 9092
+      KAFKA_LLM_TOPIC: chillbot_llm_topic
+      KAFKA_LLM_GROUP_ID: chillbot-llm-group
+      KAFKA_OUT_TOPIC: chillbot_out_topic
+      KAFKA_OUT_GROUP_ID: chillbot-out-group
+      KAFKA_AUTO_OFFSET_RESET: earliest
+      KAFKA_ENABLE_AUTO_COMMIT: 1
+      KAFKA_INITIAL_TIMEOUT: 20
+      KAFKA_RETRY_TIMEOUT: 10
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_IDS: ${ADMIN_IDS}
+    networks:
+      - chillbot-network
+    restart: on-failure
+
   chillbot-api:
     build:
       context: .
@@ -25,8 +49,6 @@ services:
       LLM_API_KEY: ${LLM_API_KEY}
       LLM_URL: ${LLM_URL}
       LLM_MODEL: ${LLM_MODEL}
-    ports:
-      - '8002:8002'
     networks:
       - chillbot-network
     restart: on-failure

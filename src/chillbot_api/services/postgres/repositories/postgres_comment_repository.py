@@ -17,11 +17,13 @@ class PostgresCommentRepository(AbstractCommentRepository):
     async def get(self, comment_id: str):
         return await self._session.get(Comment, comment_id)
 
-    async def list(self, comment_id=None, user_id=None, place_id=None):
+    async def list(self, comment_id=None, is_moderated: bool | None = None, user_id=None, place_id=None):
         stmt = select(Comment)
 
         if comment_id is not None:
             stmt = stmt.where(Comment.comment_id == comment_id)
+        if is_moderated is not None:
+            stmt = stmt.where(Comment.is_moderated == is_moderated)
         if user_id is not None:
             stmt = stmt.where(Comment.user_id == user_id)
         if place_id is not None:
@@ -33,7 +35,7 @@ class PostgresCommentRepository(AbstractCommentRepository):
     async def update(self, **filters):
         stmt = update(Comment)
 
-        for field in ("comment_id", "user_id", "place_id"):
+        for field in ("comment_id", "is_moderated", "user_id", "place_id"):
             value = filters.get(field)
             if value is not None:
                 stmt = stmt.where(getattr(Comment, field) == value)

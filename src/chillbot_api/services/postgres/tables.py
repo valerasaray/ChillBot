@@ -25,6 +25,7 @@ class Comment(BaseTable):
     __tablename__ = 'Comment'
     comment_id: Mapped[str] = mapped_column(String, primary_key=True)
     text: Mapped[str] = mapped_column(String)
+    is_moderated: Mapped[bool] = mapped_column(Boolean)
     user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id'))
     place_id: Mapped[int] = mapped_column(ForeignKey('place.place_id'))
 

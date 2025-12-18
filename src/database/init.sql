@@ -55,6 +55,7 @@ CREATE TABLE public."Rate" (
 
 CREATE TABLE public."Comment" (
 	comment_id int8 NOT NULL,
+    is_moderated bool NOT NULL, 
 	user_id int8 NOT NULL,
 	place_id int8 NOT NULL,
 	"text" varchar NOT NULL,
