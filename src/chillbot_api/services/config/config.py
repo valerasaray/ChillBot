@@ -3,7 +3,6 @@ import os
 from typing import Any, Type
 from pydantic import BaseModel
 from sqlalchemy.engine import URL
-from services.logger.logger import logger
 
 
 class KafkaConfig(BaseModel):
@@ -56,7 +55,6 @@ class Config(BaseModel):
     
     @classmethod
     def from_env(cls) -> 'Config':
-        logger.info(cls._getenv('KAFKA_PORT', int))
         return Config(
             kafka_consumer=KafkaConfig(
                 host=cls._getenv('KAFKA_HOST'),

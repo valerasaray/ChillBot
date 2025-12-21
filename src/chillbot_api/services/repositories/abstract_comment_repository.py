@@ -24,11 +24,11 @@ class AbstractCommentRepository(ABC):
     async def list(
         self,
         limit: int = 100,
-        offset: int = 0,
-        text: int | None = None,
+        text: str | None = None,
         is_moderated: bool | None = None,
         user_id: int | None = None,
         place_id: int | None = None,
+        last_comment_id: int | None = None
     ) -> Iterable[Comment]:
         ...
 

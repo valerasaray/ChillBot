@@ -5,6 +5,7 @@ from services.repositories.abstract_user_repository import AbstractUserRepositor
 from services.repositories.abstract_comment_repository import AbstractCommentRepository
 from services.repositories.abstract_place_repository import AbstractPlaceRepository
 from services.repositories.abstract_rate_repository import AbstractRateRepository
+from services.logger.logger import logger
 from usecases.command.abstract_command import AbstractCommand
 
 
@@ -23,6 +24,9 @@ class Moderation(AbstractCommand):
 
     async def run(self, request: RequestMessage) -> ResponseMessage:
         command = ModerationRequestCommand.from_mesage(request)
+        
+        logger.info(command)
+        logger.info(command.place_offset)
         
         users = await self._user_repository.list(
             tg_id=command.tg_id,
@@ -54,10 +58,12 @@ class Moderation(AbstractCommand):
         
         comments = await self._comment_repository.list(
             limit=1,
-            offset=command.place_offset,
+            last_comment_id=command.prev_comment_id if command.prev_comment_id is not None else 0,
             is_moderated=False
         )
-        
+        logger.info(len(comments))
+        if len(comments) > 0:
+            logger.info(comments[0])
         if len(comments) == 0:
             return ResponseMessage(
                 _tg_id=request._tg_id,
@@ -71,13 +77,20 @@ class Moderation(AbstractCommand):
         rates = await self._rate_repository.list(place_id=comments[0].place_id, user_id=comments[0].user_id)
         
         response = ModerationResponse(
-            comment_id=comments[0].comment_id,
-            place=place.name,
-            place_offset=command.place_offset + 1,
-            rate=rates[0].rate,
+            tg_id=command.tg_id,
+            user=users[0].tg_id,
             text=comments[0].text,
-            tg_id=command.tg_id
+            rate=rates[0].rate,
+            place=place.name,
+            city=place.city,
+            category=place.category,
+            comment_id=comments[0].comment_id,
+            place_offset=command.place_offset + 1,
         )
         
-        return response.to_mesage()
-    
+        message = response.to_mesage()
+
+        logger.info(message)
+        
+        return message
+        

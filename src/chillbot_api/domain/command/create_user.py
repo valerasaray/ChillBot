@@ -3,7 +3,7 @@ from domain.message.request_message import RequestMessage
 
 
 class CreateUserCommand(BaseModel):
-    tg_id: str
+    tg_id: int
     is_admin: bool
 
     @staticmethod

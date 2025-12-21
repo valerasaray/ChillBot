@@ -1,17 +1,17 @@
 import os
 from dotenv import load_dotenv
-
+from aiogram.fsm.context import FSMContext
 import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
-from aiogram.filters import Command, CommandStart, StateFilter
+from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.fsm.state import StatesGroup, State
-from aiogram.fsm.context import FSMContext
-
 from services.user_data import UserDataManager
 from domain.message.request_message import RequestMessage
 from domain.message.response_message import ResponseMessage
+from domain.city.cities_list import cities_list
+from domain.categories.categories_list import categories_list
 from services.config.config import Config
 from services.kafka.consumer import Consumer
 from services.kafka.producer import Producer
@@ -19,6 +19,13 @@ from services.logger.logger import logger
 from usecases.messages_manager.messages_manager import MessagesManager
 
 
+class Comment(StatesGroup):
+    city = State()
+    category = State()
+    place = State()
+    rating = State()
+    comment = State()
+    
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [
@@ -33,49 +40,45 @@ dp = Dispatcher(storage=MemoryStorage())
 user_manager = UserDataManager()
 
 
-class Comment(StatesGroup):
-    city = State()
-    category = State()
-    place = State()
-    rating = State()
-    comment = State()
-
-
-@dp.message(CommandStart())
-async def handle_start(message: Message):
-    await message.answer("Привет!")
-
-
-@dp.message(Command("admin"))
-async def handle_admin_allowed(message: Message):
-    user_id = message.from_user.id
-
-    if user_id not in ADMIN_IDS:
-        await message.answer("У вас нет прав доступа к этой команде!")
-        return
-
-    await message.answer("Вы вошли в админ-панель. Доступ разрешен.")
+@dp.message(Command("start"))
+async def handle_start(message: Message, kafka_producer: Producer):
+    id = message.from_user.id
+    
+    user_create_request = RequestMessage(
+        _command='user_create',
+        _tg_id=id,
+        _request_params={'is_admin': int(id) in ADMIN_IDS}
+    )
+    
+    kafka_producer.produce(user_create_request.as_dict())
 
 
 @dp.message(Command("comment"))
 async def post_comment(message: Message, state: FSMContext):
     await state.set_state(Comment.city)
-    await message.answer("Введите город:")
-
-
+    cities = '\n' + '\n'.join(sorted(cities_list))
+    await message.answer(f"Выберите город из списка: {cities}")
+    
+    
 @dp.message(Comment.city)
 async def post_comment_2(message: Message, state: FSMContext):
-    await state.update_data(city=message.text)
-    await state.set_state(Comment.category)
-    await message.answer("Выберите категорию:")
-
+    if message.text in cities_list:
+        await state.update_data(city=message.text)
+        await state.set_state(Comment.category)
+        categories = '\n' + '\n'.join(sorted(categories_list))
+        await message.answer(f"Выберите категорию из списка: {categories}")
+    else:
+        await message.answer('Неправильный город, попробуйте еще раз')
+    
 
 @dp.message(Comment.category)
 async def post_comment_3(message: Message, state: FSMContext):
-    await state.update_data(category=message.text)
-    await state.set_state(Comment.place)
-    await message.answer("Выберите место:")
-
+    if message.text in categories_list:
+        await state.update_data(category=message.text)
+        await state.set_state(Comment.place)
+        await message.answer(f'Введите место:')
+    else:
+        await message.answer('Неправильная категория, попробуйте еще раз')
 
 @dp.message(Comment.place)
 async def post_comment_4(message: Message, state: FSMContext):
@@ -92,44 +95,124 @@ async def post_comment_5(message: Message, state: FSMContext):
 
 
 @dp.message(Comment.comment)
-async def post_comment_final(message: Message, state: FSMContext):
+async def post_comment_final(message: Message, state: FSMContext, kafka_producer: Producer):
+    id = message.from_user.id
     await state.update_data(comment=message.text)
     data = await state.get_data()
-    await message.answer(
-        "Спасибо за оставленный отзыв!"  
-    )
-    await state.clear()
+    try:
+        request = RequestMessage(
+            _tg_id=id,
+            _command='comment',
+            _text=data['comment'],
+            _request_params={
+                'place_name': data['place'],
+                'rate': int(data['rating'])
+            }
+        )
+        kafka_producer.produce(request.as_dict())
+    finally:
+        await state.clear()
 
+
+@dp.message(Command("moderate"))
+async def moderate(message: Message, kafka_producer: Producer):
+    id = message.from_user.id
+    try:
+        request = RequestMessage(
+            _tg_id=id,
+            _command='moderate',
+            _text='',
+            _request_params={
+                'accept': None,
+                'place_offset': 0,
+                'prev_comment_id': None
+            }
+        )
+        kafka_producer.produce(request.as_dict())
+    finally:
+        pass
+
+
+@dp.message(Command('accept'))
+async def accept(message: Message, kafka_producer: Producer, messages_manager: MessagesManager):
+    id = message.from_user.id
+    comment = messages_manager.load(id, 'moderate')
+    logger.info(comment)
+    try:
+        request = RequestMessage(
+            _tg_id=id,
+            _command='moderate',
+            _text='',
+            _request_params={
+                'accept': True,
+                'place_offset': comment._response_params['place_offset'],
+                'prev_comment_id': comment._response_params['comment_id']
+            }
+        )
+        kafka_producer.produce(request.as_dict())
+    finally:
+        pass
+
+@dp.message(Command('decline'))
+async def accept(message: Message, kafka_producer: Producer, messages_manager: MessagesManager):
+    id = message.from_user.id
+    comment = messages_manager.load(id, 'moderate')
+    logger.info(comment)
+    try:
+        request = RequestMessage(
+            _tg_id=id,
+            _command='moderate',
+            _text='',
+            _request_params={
+                'accept': False,
+                'place_offset': comment._response_params['place_offset'],
+                'prev_comment_id': comment._response_params['comment_id']
+            }
+        )
+        kafka_producer.produce(request.as_dict())
+    finally:
+        pass
 
 @dp.message()
-async def handle_with_manager(
-    message: Message, kafka_producer: Producer, messages_manager: MessagesManager
-):
+async def handle_with_manager(message: Message, kafka_producer: Producer, messages_manager: MessagesManager):
     id = message.from_user.id
     text = message.text
-
-    message = RequestMessage(_text=text, _tg_id=id, _request_params={})
+    
+    message = RequestMessage(
+        _command='recomend',
+        _text=text,
+        _tg_id=id,
+        _request_params={}
+    )
     old_message = messages_manager.load(id)
     if old_message is not None and old_message._context is not None:
-        for item in old_message._context.strip("\n").split("\n"):
-            message.update_context(context=item.strip(" -"))
+        for item in old_message._context.strip('\n').split('\n'):
+            message.update_context(context=item.strip(' -'))
     message.update_context(context=text)
-
+    
     messages_manager.save(message)
-
-    kafka_producer.produce(message=message.as_dict())
+    
+    kafka_producer.produce(
+        message=message.as_dict()
+    )
 
 
 async def listen_kafka(kafka_consumer: Consumer, messages_manager: MessagesManager):
     async for message_dict in kafka_consumer.listen():
         try:
-            logger.debug(f"Received message: {message_dict}")
+            logger.info(f"Received message: {message_dict}")
             response_message = ResponseMessage.from_dict(message_dict)
-
-            request_message = messages_manager.load(response_message._tg_id)
-            request_message.update_context(response_message._text)
-            messages_manager.save(request_message)
-
+            logger.info(f"Received message: {response_message}")
+            if response_message._command == 'recomend':
+                request_message = messages_manager.load(response_message._tg_id, response_message._command)
+                if request_message is not None and request_message._command == 'recomend':
+                    request_message.update_context(response_message._text)
+                    messages_manager.save(request_message)
+            elif response_message._command == 'moderate' and response_message._response_params['success']:
+                logger.info(response_message)
+                messages_manager.save(response_message)
+            logger.info(response_message)
+            logger.info('IUGHFIUWGFOIUWEGHFIOWUEGHFOEWIUHF')
             await response_message.send_to_user(bot)
         except Exception as ex:
             logger.exception(f"Error processing message: {ex.with_traceback()}")
@@ -137,18 +220,22 @@ async def listen_kafka(kafka_consumer: Consumer, messages_manager: MessagesManag
 
 async def main():
     config = Config.from_env()
-    kafka_consumer = Consumer(config=config.kafka_conmsumer)
-    kafka_producer = Producer(config=config.kafka_producer)
-
+    kafka_consumer = Consumer(
+        config=config.kafka_conmsumer
+    )
+    kafka_producer = Producer(
+        config=config.kafka_producer
+    )
+    
     messages_manager = MessagesManager()
-
-    dp.workflow_data["config"] = config
+    
+    dp.workflow_data['config'] = config
     dp.workflow_data["kafka_producer"] = kafka_producer
-    dp.workflow_data["messages_manager"] = messages_manager
-
+    dp.workflow_data['messages_manager'] = messages_manager
+    
     server_task = asyncio.create_task(dp.start_polling(bot))
     kafka_task = asyncio.create_task(listen_kafka(kafka_consumer, messages_manager))
-
+    
     try:
         await asyncio.gather(server_task, kafka_task)
     finally:
@@ -157,7 +244,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("Exit")
+    asyncio.run(main())

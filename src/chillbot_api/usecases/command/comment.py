@@ -8,6 +8,8 @@ from services.repositories.abstract_place_repository import AbstractPlaceReposit
 from services.repositories.abstract_rate_repository import AbstractRateRepository
 from usecases.command.abstract_command import AbstractCommand
 
+from services.logger.logger import logger
+
 
 class Comment(AbstractCommand):
     def __init__(
@@ -26,6 +28,7 @@ class Comment(AbstractCommand):
         command = CommentCommand.from_mesage(request)
         
         place_records = await self._place_repository.list(name=command.place_name)
+        logger.info(place_records)
         if len(place_records) == 0:
             return ResponseMessage(
                 _tg_id=request._tg_id,
@@ -41,16 +44,20 @@ class Comment(AbstractCommand):
             name=place_records[0].name,
             place_id=place_records[0].place_id
         )
+        logger.info(place)
+        logger.info(request._tg_id)
         
         user_records = await self._user_repository.list(tg_id=request._tg_id)
+        logger.info(user_records)
         
         user_id = user_records[0].user_id
+        logger.info(user_id)
         
         old_comments = await self._comment_repository.list(
             place_id=place.place_id,
             user_id=user_id
         )
-        old_rates = await self._comment_repository.list(
+        old_rates = await self._rate_repository.list(
             place_id=place.place_id,
             user_id=user_id
         )

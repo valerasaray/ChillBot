@@ -26,13 +26,13 @@ class Comment(BaseTable):
     comment_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     text: Mapped[str] = mapped_column(String)
     is_moderated: Mapped[bool] = mapped_column(Boolean)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id'))
-    place_id: Mapped[int] = mapped_column(ForeignKey('place.place_id'))
+    user_id: Mapped[int] = mapped_column(ForeignKey('User.user_id'))
+    place_id: Mapped[int] = mapped_column(ForeignKey('Place.place_id'))
 
 
 class Rate(BaseTable):
     __tablename__ = 'Rate'
     rate_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     rate: Mapped[int] = mapped_column(Integer)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.user_id'))
-    place_id: Mapped[int] = mapped_column(ForeignKey('place.place_id'))
+    user_id: Mapped[int] = mapped_column(ForeignKey('User.user_id'))
+    place_id: Mapped[int] = mapped_column(ForeignKey('Place.place_id'))

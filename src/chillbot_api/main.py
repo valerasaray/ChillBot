@@ -21,28 +21,29 @@ async def main():
     
     llm_client = QwenLlmClient(config.llm)
     
-    postgres_session = PostgresSession(config.database)
-    comment_repository = PostgresCommentRepository(postgres_session)
-    user_repository = PostgresUserRepository(postgres_session)
-    place_repository = PostgresPlaceRepository(postgres_session)
-    rate_repository = PostgresRateRepository(postgres_session)
+    postgres_session = await PostgresSession(config.database).create()
+    async with postgres_session() as s:
+        comment_repository = PostgresCommentRepository(s)
+        user_repository = PostgresUserRepository(s)
+        place_repository = PostgresPlaceRepository(s)
+        rate_repository = PostgresRateRepository(s)
+        
+        processor = MessagesProcessor(
+            producer,
+            llm_client,
+            comment_repository,
+            user_repository,
+            place_repository,
+            rate_repository
+        )
     
-    processor = MessagesProcessor(
-        producer,
-        llm_client,
-        comment_repository,
-        user_repository,
-        place_repository,
-        rate_repository
-    )
-    
-    for message in consumer.listen():
-        try:
-            logger.info(f'received message: {message}')
-            await processor.process(message)
-        except Exception as e:
-            logger.error(e)
-            continue
+        for message in consumer.listen():
+            # try:
+                logger.info(f'received message: {message}')
+                await processor.process(message)
+            # except Exception as e:
+            #     logger.error(e)
+            #     continue
 
 
 if __name__ == '__main__':

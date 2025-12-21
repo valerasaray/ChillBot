@@ -33,18 +33,14 @@ class PostgresCommentRepository(AbstractCommentRepository):
     async def list(
         self,
         limit: int = 100,
-        offset: int = 0,
         text: str | None = None,
         is_moderated: bool | None = None,
         user_id: int | None = None,
         place_id: int | None = None,
+        last_comment_id: int | None = None
     ):
-        stmt = (
-            select(Comment)
-            .order_by(Comment.comment_id.asc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(Comment)
+            
         if text is not None:
             stmt = stmt.where(Comment.text == text)
         if is_moderated is not None:
@@ -53,6 +49,11 @@ class PostgresCommentRepository(AbstractCommentRepository):
             stmt = stmt.where(Comment.user_id == user_id)
         if place_id is not None:
             stmt = stmt.where(Comment.place_id == place_id)
+        
+        if last_comment_id is not None:
+            stmt = stmt.where(Comment.comment_id > last_comment_id)
+        
+        stmt = stmt.order_by(Comment.comment_id.asc()).limit(limit)
 
         result = await self._session.execute(stmt)
         return result.scalars().all()
