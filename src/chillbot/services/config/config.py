@@ -16,9 +16,15 @@ class KafkaConfig(BaseModel):
     retry_timeout: int
 
 
+class BotConfig(BaseModel):
+    token: str
+    admin_ids: list[int]    
+
+
 class Config(BaseModel):
     kafka_producer: KafkaConfig
     kafka_conmsumer: KafkaConfig
+    bot: BotConfig
     
     @classmethod
     def from_env(cls) -> 'Config':
@@ -43,6 +49,14 @@ class Config(BaseModel):
                 group_id=cls._getenv('KAFKA_OUT_GROUP_ID'),
                 initial_timeout=cls._getenv('KAFKA_INITIAL_TIMEOUT', int),
                 retry_timeout=cls._getenv('KAFKA_RETRY_TIMEOUT', int)
+            ),
+            bot=BotConfig(
+                token=cls._getenv('BOT_TOKEN'),
+                admin_ids=[
+                    int(id_str.strip())
+                    for id_str in os.getenv("ADMIN_IDS").split(",")
+                    if id_str.strip()
+                ]
             )
         )
 

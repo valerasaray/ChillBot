@@ -4,7 +4,7 @@ from services.config.config import Config
 from services.kafka.consumer import Consumer
 from services.kafka.producer import Producer
 from services.logger.logger import logger
-from services.llm.qwen_llm_client import QwenLlmClient
+from services.llm.huggingface_llm_client import HuggingfaceLlmClient
 from services.postgres.session import PostgresSession
 from services.postgres.repositories.postgres_comment_repository import PostgresCommentRepository
 from services.postgres.repositories.postgres_place_repository import PostgresPlaceRepository
@@ -19,7 +19,7 @@ async def main():
     consumer = Consumer(config.kafka_consumer)
     producer = Producer(config.kafka_producer)
     
-    llm_client = QwenLlmClient(config.llm)
+    llm_client = HuggingfaceLlmClient(config.llm)
     
     postgres_session = await PostgresSession(config.database).create()
     async with postgres_session() as s:
@@ -38,12 +38,12 @@ async def main():
         )
     
         for message in consumer.listen():
-            # try:
+            try:
                 logger.info(f'received message: {message}')
                 await processor.process(message)
-            # except Exception as e:
-            #     logger.error(e)
-            #     continue
+            except Exception as e:
+                logger.error(e.with_traceback())
+                continue
 
 
 if __name__ == '__main__':

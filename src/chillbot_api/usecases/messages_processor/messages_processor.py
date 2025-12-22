@@ -12,6 +12,7 @@ from usecases.command.abstract_command import AbstractCommand
 from usecases.command.comment import Comment
 from usecases.command.moderation import Moderation
 from usecases.command.user_create import UserCreate
+from usecases.command.recomend import Recomend
 
 
 class MessagesProcessor:
@@ -25,7 +26,6 @@ class MessagesProcessor:
         rate_repository: AbstractRateRepository
     ):
         self._kafka_producer = kafka_producer
-        self._llm_client = llm_client
         
         self._commands: dict[str, AbstractCommand] = {
             'user_create': UserCreate(
@@ -42,6 +42,13 @@ class MessagesProcessor:
                 comment_repository=comment_repository,
                 place_repository=place_repository,
                 user_repository=user_repository
+            ),
+            'recomend': Recomend(
+                rate_repository=rate_repository,
+                comment_repository=comment_repository,
+                place_repository=place_repository,
+                user_repository=user_repository,
+                llm_client=llm_client
             )
         }
     

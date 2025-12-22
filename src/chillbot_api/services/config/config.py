@@ -17,7 +17,6 @@ class KafkaConfig(BaseModel):
 
 
 class LlmConfig(BaseModel):
-    url: str
     model: str
     api_key: str
 
@@ -79,7 +78,6 @@ class Config(BaseModel):
             llm=LlmConfig(
                 api_key=cls._getenv('LLM_API_KEY'),
                 model=cls._getenv('LLM_MODEL'),
-                url=cls._getenv('LLM_URL')
             ),
             database=DatabaseConfig(
                 database=cls._getenv('POSTGRES_DB'),

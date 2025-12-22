@@ -75,10 +75,11 @@ class Moderation(AbstractCommand):
         
         place = await self._place_repository.get(place_id=comments[0].place_id)
         rates = await self._rate_repository.list(place_id=comments[0].place_id, user_id=comments[0].user_id)
+        comment_user = await self._user_repository.get(user_id=comments[0].user_id)
         
         response = ModerationResponse(
             tg_id=command.tg_id,
-            user=users[0].tg_id,
+            user=comment_user.tg_id,
             text=comments[0].text,
             rate=rates[0].rate,
             place=place.name,

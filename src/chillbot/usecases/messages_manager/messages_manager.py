@@ -15,6 +15,5 @@ class MessagesManager:
     def load(self, tg_id: int, command: str) -> RequestMessage | ResponseMessage | None:
         return self._data[command].get(tg_id, None)
     
-    def clear(self, tg_id: int) -> None:
-        del self._data['recomend'][tg_id]
-        del self._data['moderate'][tg_id]
+    def clear(self, tg_id: int, command: str) -> None:
+        del self._data[command][tg_id]

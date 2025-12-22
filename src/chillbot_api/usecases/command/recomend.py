@@ -140,11 +140,11 @@ class Recomend(AbstractCommand):
                     )
                 )
                 
-            top_places = sorted(top_places, key=lambda p: p[0])
+            top_places = sorted(top_places, key=lambda p: p[0] * -1)
             
             logger.info(top_places)
             
-            text = '\n'
+            text = f'Рекомендую эти места категории {place.category} в городе {place.city}\n\n'
             
             for i in range(min(len(top_places), 3)):
                 comment_llm_req = CommentsLlmMessage(
@@ -169,7 +169,10 @@ class Recomend(AbstractCommand):
                         logger.error(ex.with_traceback())
                         continue
                 
-                text += f'{comment_llm_res.summary}\n'
+                text += f'- {top_places[i][1].name}\n⭐️{top_places[i][0]}\n{comment_llm_res.summary}\n'
+                if i != min(len(top_places), 3) - 1:
+                    text += '\n'
+                        
             
             return ResponseMessage(
                 _tg_id=command.tg_id,
