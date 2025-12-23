@@ -23,6 +23,7 @@
 3. 
 
 ### Архитектура сервиса
+![Архитектура сервиса](./arch_scheme.jpg)
 
 ### Диаграмма БД
 ![Диаграмма БД](./db_scheme.jpg)
@@ -77,6 +78,7 @@ docker-compose up
 ```
 https://t.me/Chill_Rec_Bot
 ```
+
 
 
 
